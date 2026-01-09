@@ -94,6 +94,10 @@ cd mcp-server && cargo build --release
 | `MAX_LINKS` | `100` | Max links to return in Sources section |
 | `MAX_CONTENT_CHARS` | `10000` | Default `max_chars` limit for scraped content (100-50000) |
 | `RUST_LOG` | - | Log level: `error`, `warn`, `info`, `debug`, `trace` |
+| `TLS_CA_CERT` | - | **Optional**: PEM filename in `/app/certificates` to trust as a custom CA for outbound TLS |
+| `TLS_HOST_CERT` | - | **Optional**: PEM filename in `/app/certificates` for inbound TLS server certificate (enable with `TLS_HOST_KEY`) |
+| `TLS_HOST_KEY` | - | **Optional**: PEM filename in `/app/certificates` for inbound TLS server private key (enable with `TLS_HOST_CERT`) |
+
 
 ## � MCP Tools
 
@@ -504,3 +508,4 @@ Contributions welcome! Areas for improvement:
 ## 📄 License
 
 MIT License - Free to use, modify, and distribute.
+
