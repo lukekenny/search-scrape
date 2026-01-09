@@ -75,6 +75,7 @@ cd mcp-server && cargo build --release
         "SEARXNG_URL": "http://localhost:8888",
         "SEARXNG_ENGINES": "google,bing,duckduckgo",
         "QDRANT_URL": "http://localhost:6334",  // Optional: enables history (gRPC port)
+        "QDRANT_API_KEY": "your-qdrant-api-key",  // Optional: API key for Qdrant
         "MAX_LINKS": "100"
       }
     }
@@ -88,6 +89,7 @@ cd mcp-server && cargo build --release
 |----------|---------|-------------|
 | `SEARXNG_URL` | `http://localhost:8888` | SearXNG instance URL |
 | `QDRANT_URL` | - | **Optional**: Qdrant gRPC URL (e.g., `http://localhost:6334`). Enables research history feature. **Note**: Use gRPC port 6334, NOT HTTP port 6333 |
+| `QDRANT_API_KEY` | - | **Optional**: Qdrant API key or token for authenticated instances |
 | `SEARXNG_ENGINES` | `duckduckgo,google,bing` | Default search engines (comma-separated) |
 | `MAX_LINKS` | `100` | Max links to return in Sources section |
 | `MAX_CONTENT_CHARS` | `10000` | Default `max_chars` limit for scraped content (100-50000) |

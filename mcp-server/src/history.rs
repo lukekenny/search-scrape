@@ -39,7 +39,11 @@ pub struct MemoryManager {
 impl MemoryManager {
     /// Create a new memory manager
     pub async fn new(qdrant_url: &str) -> Result<Self> {
-        let qdrant = Qdrant::from_url(qdrant_url)
+        let mut qdrant_builder = Qdrant::from_url(qdrant_url);
+        if let Ok(api_key) = std::env::var("QDRANT_API_KEY") {
+            qdrant_builder = qdrant_builder.api_key(api_key);
+        }
+        let qdrant = qdrant_builder
             .build()
             .context("Failed to connect to Qdrant")?;
 
