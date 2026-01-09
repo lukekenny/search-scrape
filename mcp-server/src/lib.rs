@@ -9,7 +9,7 @@ pub mod query_rewriter;
 
 use anyhow::Context;
 use std::env;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tracing::info;
 
 const CERT_DIR: &str = "/app/certificates";
@@ -69,6 +69,7 @@ pub fn build_http_client() -> anyhow::Result<reqwest::Client> {
 
     if let Ok(ca_cert_name) = env::var("TLS_CA_CERT") {
         let cert_path = Path::new(CERT_DIR).join(&ca_cert_name);
+        configure_tls_ca_bundle(&cert_path)?;
         let pem = std::fs::read(&cert_path)
             .with_context(|| format!("Failed to read TLS CA certificate at {}", cert_path.display()))?;
         let cert = reqwest::Certificate::from_pem(&pem)
@@ -78,4 +79,52 @@ pub fn build_http_client() -> anyhow::Result<reqwest::Client> {
     }
 
     builder.build().context("Failed to build HTTP client")
+}
+
+fn configure_tls_ca_bundle(cert_path: &Path) -> anyhow::Result<()> {
+    let system_bundle = env::var("SSL_CERT_FILE")
+        .ok()
+        .map(PathBuf::from)
+        .or_else(|| {
+            let candidates = [
+                "/etc/ssl/certs/ca-certificates.crt",
+                "/etc/ssl/ca-bundle.pem",
+                "/etc/pki/tls/certs/ca-bundle.crt",
+            ];
+            candidates
+                .iter()
+                .map(Path::new)
+                .find(|path| path.exists())
+                .map(PathBuf::from)
+        });
+
+    let mut combined_pem = Vec::new();
+    if let Some(bundle_path) = system_bundle.as_ref() {
+        combined_pem = std::fs::read(bundle_path).with_context(|| {
+            format!(
+                "Failed to read system CA bundle at {}",
+                bundle_path.display()
+            )
+        })?;
+    }
+
+    if !combined_pem.is_empty() && !combined_pem.ends_with(b"\n") {
+        combined_pem.push(b'\n');
+    }
+
+    let custom_pem = std::fs::read(cert_path)
+        .with_context(|| format!("Failed to read TLS CA certificate at {}", cert_path.display()))?;
+    combined_pem.extend_from_slice(&custom_pem);
+
+    let bundle_path = Path::new("/tmp/mcp-server-ca-bundle.pem");
+    std::fs::write(bundle_path, combined_pem)
+        .with_context(|| format!("Failed to write combined CA bundle at {}", bundle_path.display()))?;
+
+    env::set_var("SSL_CERT_FILE", bundle_path);
+    info!(
+        "Configured SSL_CERT_FILE with system roots and {}",
+        cert_path.display()
+    );
+
+    Ok(())
 }
