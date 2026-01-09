@@ -1,4 +1,4 @@
-FROM rust:1.82 as builder
+FROM rust:1.92 AS builder
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -13,13 +13,14 @@ WORKDIR /app
 COPY Cargo.toml ./
 
 # Create a dummy main.rs to build dependencies
-RUN mkdir src && echo "fn main() {}" > src/main.rs
+#RUN mkdir src && echo "fn main() {}" > src/main.rs
 
 # Build dependencies
-RUN cargo build --release
-RUN rm src/main.rs
+#RUN cargo build --release
+#RUN rm src/main.rs
 
 # Copy source code
+RUN mkdir src
 COPY src ./src
 
 # Build application
