@@ -9,7 +9,7 @@ pub mod query_rewriter;
 
 use anyhow::Context;
 use std::env;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tracing::info;
 
 const CERT_DIR: &str = "/app/certificates";
@@ -69,6 +69,7 @@ pub fn build_http_client() -> anyhow::Result<reqwest::Client> {
 
     if let Ok(ca_cert_name) = env::var("TLS_CA_CERT") {
         let cert_path = Path::new(CERT_DIR).join(&ca_cert_name);
+        add_cert_dir_to_tls_env(Path::new(CERT_DIR));
         let pem = std::fs::read(&cert_path)
             .with_context(|| format!("Failed to read TLS CA certificate at {}", cert_path.display()))?;
         let cert = reqwest::Certificate::from_pem(&pem)
@@ -78,4 +79,23 @@ pub fn build_http_client() -> anyhow::Result<reqwest::Client> {
     }
 
     builder.build().context("Failed to build HTTP client")
+}
+
+fn add_cert_dir_to_tls_env(cert_dir: &Path) {
+    let existing = env::var_os("SSL_CERT_DIR");
+    let mut paths: Vec<PathBuf> = existing
+        .as_deref()
+        .map(|value| env::split_paths(value).collect())
+        .unwrap_or_default();
+
+    if !paths.iter().any(|path| path == cert_dir) {
+        paths.push(cert_dir.to_path_buf());
+        if let Ok(joined) = env::join_paths(paths) {
+            env::set_var("SSL_CERT_DIR", joined);
+            info!(
+                "Updated SSL_CERT_DIR to include {}",
+                cert_dir.display()
+            );
+        }
+    }
 }
