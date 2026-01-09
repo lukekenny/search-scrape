@@ -7,6 +7,13 @@ pub mod stdio_service;
 pub mod history;
 pub mod query_rewriter;
 
+use anyhow::Context;
+use std::env;
+use std::path::Path;
+use tracing::info;
+
+const CERT_DIR: &str = "/app/certificates";
+
 #[derive(Clone)]
 pub struct AppState {
     pub searxng_url: String,
@@ -54,4 +61,21 @@ impl AppState {
         self.memory = Some(memory);
         self
     }
+}
+
+pub fn build_http_client() -> anyhow::Result<reqwest::Client> {
+    let mut builder = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30));
+
+    if let Ok(ca_cert_name) = env::var("TLS_CA_CERT") {
+        let cert_path = Path::new(CERT_DIR).join(&ca_cert_name);
+        let pem = std::fs::read(&cert_path)
+            .with_context(|| format!("Failed to read TLS CA certificate at {}", cert_path.display()))?;
+        let cert = reqwest::Certificate::from_pem(&pem)
+            .with_context(|| format!("Failed to parse TLS CA certificate at {}", cert_path.display()))?;
+        info!("Loaded TLS CA certificate from {}", cert_path.display());
+        builder = builder.add_root_certificate(cert);
+    }
+
+    builder.build().context("Failed to build HTTP client")
 }
