@@ -29,7 +29,8 @@ impl McpService {
         // Initialize memory if QDRANT_URL is set
         if let Ok(qdrant_url) = std::env::var("QDRANT_URL") {
             info!("Initializing memory with Qdrant at: {}", qdrant_url);
-            match history::MemoryManager::new(&qdrant_url).await {
+            let qdrant_api_key = std::env::var("QDRANT_API_KEY").ok();
+            match history::MemoryManager::new(&qdrant_url, qdrant_api_key.as_deref()).await {
                 Ok(memory) => {
                     state = state.with_memory(Arc::new(memory));
                     info!("Memory initialized successfully");

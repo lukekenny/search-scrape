@@ -38,9 +38,9 @@ pub struct MemoryManager {
 
 impl MemoryManager {
     /// Create a new memory manager
-    pub async fn new(qdrant_url: &str) -> Result<Self> {
+    pub async fn new(qdrant_url: &str, api_key: Option<&str>) -> Result<Self> {
         let mut qdrant_builder = Qdrant::from_url(qdrant_url);
-        if let Ok(api_key) = std::env::var("QDRANT_API_KEY") {
+        if let Some(api_key) = api_key {
             qdrant_builder = qdrant_builder.api_key(api_key);
         }
         let qdrant = qdrant_builder
