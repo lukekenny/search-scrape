@@ -6,12 +6,15 @@ use axum::{
     Router,
 };
 use std::env;
+use std::path::Path;
 use std::sync::Arc;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 use tracing::{info, warn, error};
 
-use mcp_server::{search, scrape, types::*, mcp, AppState};
+use mcp_server::{build_http_client, search, scrape, types::*, mcp, AppState};
+
+const CERT_DIR: &str = "/app/certificates";
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -28,9 +31,7 @@ async fn main() -> anyhow::Result<()> {
     info!("SearXNG URL: {}", searxng_url);
 
     // Create HTTP client
-    let http_client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(30))
-        .build()?;
+    let http_client = build_http_client()?;
 
     // Create application state
     let mut state = AppState::new(searxng_url, http_client);
@@ -67,10 +68,35 @@ async fn main() -> anyhow::Result<()> {
         .with_state(state);
 
     // Start server
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:5000").await?;
-    info!("MCP Server listening on http://0.0.0.0:5000");
-    
-    axum::serve(listener, app).await?;
+    let tls_cert = env::var("TLS_HOST_CERT").ok();
+    let tls_key = env::var("TLS_HOST_KEY").ok();
+
+    match (tls_cert, tls_key) {
+        (Some(cert_name), Some(key_name)) => {
+            let cert_path = Path::new(CERT_DIR).join(cert_name);
+            let key_path = Path::new(CERT_DIR).join(key_name);
+            let tls_config = axum_server::tls_rustls::RustlsConfig::from_pem_file(
+                cert_path,
+                key_path,
+            )
+            .await?;
+            info!("MCP Server listening on https://0.0.0.0:5000");
+            axum_server::bind_rustls("0.0.0.0:5000".parse()?, tls_config)
+                .serve(app.into_make_service())
+                .await?;
+        }
+        (None, None) => {
+            let listener = tokio::net::TcpListener::bind("0.0.0.0:5000").await?;
+            info!("MCP Server listening on http://0.0.0.0:5000");
+            axum::serve(listener, app).await?;
+        }
+        _ => {
+            warn!("TLS_HOST_CERT and TLS_HOST_KEY must both be set to enable inbound TLS. Falling back to HTTP.");
+            let listener = tokio::net::TcpListener::bind("0.0.0.0:5000").await?;
+            info!("MCP Server listening on http://0.0.0.0:5000");
+            axum::serve(listener, app).await?;
+        }
+    }
     
     Ok(())
 }

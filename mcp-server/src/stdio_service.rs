@@ -3,7 +3,7 @@ use std::env;
 use std::sync::Arc;
 use tracing::{error, info, warn};
 use std::borrow::Cow;
-use crate::{search, scrape, AppState, history};
+use crate::{build_http_client, search, scrape, AppState, history};
 
 #[derive(Clone, Debug)]
 pub struct McpService {
@@ -22,9 +22,7 @@ impl McpService {
         info!("Starting MCP Service");
         info!("SearXNG URL: {}", searxng_url);
 
-        let http_client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(30))
-            .build()?;
+        let http_client = build_http_client()?;
 
         let mut state = AppState::new(searxng_url, http_client);
 
