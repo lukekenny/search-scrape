@@ -39,7 +39,8 @@ async fn main() -> anyhow::Result<()> {
     // Initialize memory if QDRANT_URL is set
     if let Ok(qdrant_url) = env::var("QDRANT_URL") {
         info!("Initializing memory with Qdrant at: {}", qdrant_url);
-        match mcp_server::history::MemoryManager::new(&qdrant_url).await {
+        let qdrant_api_key = env::var("QDRANT_API_KEY").ok();
+        match mcp_server::history::MemoryManager::new(&qdrant_url, qdrant_api_key.as_deref()).await {
             Ok(memory) => {
                 state = state.with_memory(Arc::new(memory));
                 info!("Memory initialized successfully");
