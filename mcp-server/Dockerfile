@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy manifests
-COPY Cargo.toml ./
+COPY Cargo.toml Cargo.lock ./
 
 # Create a dummy main.rs to build dependencies
 #RUN mkdir src && echo "fn main() {}" > src/main.rs
